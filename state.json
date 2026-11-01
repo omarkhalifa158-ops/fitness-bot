@@ -1,0 +1,28 @@
+{
+  "status": "ACTIVE",
+  "skip_date": null,
+  "telegram_chat_id": "990265705",
+  "last_notification_sent": {
+    "title": "فحص تجريبي للنظام وتفعيل التنبيهات",
+    "category": "TEST",
+    "alert_time": "21:57",
+    "sent_at": "2026-11-01 21:57:23",
+    "channels": {
+      "telegram": true,
+      "whatsapp": false
+    }
+  },
+  "notification_history": [
+    {
+      "title": "فحص تجريبي للنظام وتفعيل التنبيهات",
+      "category": "TEST",
+      "alert_time": "21:57",
+      "sent_at": "2026-11-01 21:57:23",
+      "channels": {
+        "telegram": true,
+        "whatsapp": false
+      }
+    }
+  ],
+  "updated_at": "2026-11-01T21:57:23+02:00"
+}
