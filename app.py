@@ -55,39 +55,57 @@ scheduler = AsyncIOScheduler(timezone=CAIRO_TZ)
 # =====================================================================
 async def job_morning_alarm():
     """منبه الاستيقاظ والروتين الصباحي الساعة 07:45 ص (8 إلا ربع)"""
+    cairo_now = datetime.now(CAIRO_TZ)
+    today_str = cairo_now.strftime("%Y-%m-%d")
+    if state_manager.is_alert_sent_today("job_morning_alarm", today_str):
+        return
     custom = state_manager.get_custom_meals()
     ev = FIXED_MEALS["morning_alarm"]
     text = custom.get("morning_alarm", ev["text"])
-    await notifier.dispatch(
+    res = await notifier.dispatch(
         title=ev["title"],
         message=text,
         category=ev["category"],
         alert_time="07:45"
     )
+    if res.get("sent"):
+        state_manager.mark_alert_sent_today("job_morning_alarm", today_str)
 
 async def job_breakfast():
     """تنبيه الفطار الساعة 07:45 ص (موعد الوجبة 08:00 ص - مهلة 15 دقيقة)"""
+    cairo_now = datetime.now(CAIRO_TZ)
+    today_str = cairo_now.strftime("%Y-%m-%d")
+    if state_manager.is_alert_sent_today("job_breakfast", today_str):
+        return
     custom = state_manager.get_custom_meals()
     ev = FIXED_MEALS["breakfast"]
     text = custom.get("breakfast", ev["text"])
-    await notifier.dispatch(
+    res = await notifier.dispatch(
         title=ev["title"],
         message=text,
         category=ev["category"],
         alert_time="07:45"
     )
+    if res.get("sent"):
+        state_manager.mark_alert_sent_today("job_breakfast", today_str)
 
 async def job_work_snack():
     """تنبيه سناك الشغل الساعة 12:15 ظ (موعد السناك 12:30 ظ - مهلة 15 دقيقة)"""
+    cairo_now = datetime.now(CAIRO_TZ)
+    today_str = cairo_now.strftime("%Y-%m-%d")
+    if state_manager.is_alert_sent_today("job_work_snack", today_str):
+        return
     custom = state_manager.get_custom_meals()
     ev = FIXED_MEALS["work_snack"]
     text = custom.get("work_snack", ev["text"])
-    await notifier.dispatch(
+    res = await notifier.dispatch(
         title=ev["title"],
         message=text,
         category=ev["category"],
         alert_time="12:15"
     )
+    if res.get("sent"):
+        state_manager.mark_alert_sent_today("job_work_snack", today_str)
 
 async def job_lunch():
     """
@@ -95,17 +113,22 @@ async def job_lunch():
     يحسب وجبة اليوم بناء على اليوم الحالي من الأسبوع
     """
     cairo_now = datetime.now(CAIRO_TZ)
+    today_str = cairo_now.strftime("%Y-%m-%d")
+    if state_manager.is_alert_sent_today("job_lunch", today_str):
+        return
     weekday = cairo_now.weekday()
     lunch_info = get_lunch_for_weekday(weekday)
     meal_id = f"lunch_day_{weekday}"
     custom = state_manager.get_custom_meals()
     text = custom.get(meal_id, lunch_info["text"])
-    await notifier.dispatch(
+    res = await notifier.dispatch(
         title=f"الغداء: {lunch_info['title']}",
         message=text,
         category="OUTSIDE_ORDER_MEAL",
         alert_time="15:30"
     )
+    if res.get("sent"):
+        state_manager.mark_alert_sent_today("job_lunch", today_str)
 
 async def job_workout():
     """
@@ -113,101 +136,221 @@ async def job_workout():
     يحسب تمرين اليوم بناء على اليوم الحالي من الأسبوع
     """
     cairo_now = datetime.now(CAIRO_TZ)
+    today_str = cairo_now.strftime("%Y-%m-%d")
+    if state_manager.is_alert_sent_today("job_workout", today_str):
+        return
     weekday = cairo_now.weekday()
     wo_info = get_workout_for_weekday(weekday)
     wo_id = f"workout_day_{weekday}"
     custom = state_manager.get_custom_meals()
     text = custom.get(wo_id, wo_info["text"])
-    await notifier.dispatch(
+    res = await notifier.dispatch(
         title=f"التمرين: {wo_info['name']}",
         message=text,
         category="WORKOUT",
         alert_time="18:05"
     )
+    if res.get("sent"):
+        state_manager.mark_alert_sent_today("job_workout", today_str)
 
 async def job_shake():
     """تنبيه شيك الضخامة الساعة 07:00 م (موعد الشيك 07:15 م - مهلة 15 دقيقة)"""
+    cairo_now = datetime.now(CAIRO_TZ)
+    today_str = cairo_now.strftime("%Y-%m-%d")
+    if state_manager.is_alert_sent_today("job_shake", today_str):
+        return
     custom = state_manager.get_custom_meals()
     ev = FIXED_MEALS["post_workout_shake"]
     text = custom.get("post_workout_shake", ev["text"])
-    await notifier.dispatch(
+    res = await notifier.dispatch(
         title=ev["title"],
         message=text,
         category=ev["category"],
         alert_time="19:00"
     )
+    if res.get("sent"):
+        state_manager.mark_alert_sent_today("job_shake", today_str)
 
 async def job_dinner():
     """تنبيه العشاء ومكمل الحديد الساعة 09:15 م (موعد العشاء 09:30 م - مهلة 15 دقيقة)"""
+    cairo_now = datetime.now(CAIRO_TZ)
+    today_str = cairo_now.strftime("%Y-%m-%d")
+    if state_manager.is_alert_sent_today("job_dinner", today_str):
+        return
     custom = state_manager.get_custom_meals()
     ev = FIXED_MEALS["dinner"]
     text = custom.get("dinner", ev["text"])
-    await notifier.dispatch(
+    res = await notifier.dispatch(
         title=ev["title"],
         message=text,
         category=ev["category"],
         alert_time="21:15"
     )
+    if res.get("sent"):
+        state_manager.mark_alert_sent_today("job_dinner", today_str)
 
 async def job_bedtime_prep():
     """تنبيه ترك الهاتف والاستعداد للنوم الساعة 10:30 م (قبل النوم بنصف ساعة)"""
+    cairo_now = datetime.now(CAIRO_TZ)
+    today_str = cairo_now.strftime("%Y-%m-%d")
+    if state_manager.is_alert_sent_today("job_bedtime_prep", today_str):
+        return
     custom = state_manager.get_custom_meals()
     ev = FIXED_MEALS["bedtime_prep"]
     text = custom.get("bedtime_prep", ev["text"])
-    await notifier.dispatch(
+    res = await notifier.dispatch(
         title=ev["title"],
         message=text,
         category=ev["category"],
         alert_time="22:30"
     )
+    if res.get("sent"):
+        state_manager.mark_alert_sent_today("job_bedtime_prep", today_str)
 
 async def job_daily_reset():
     """
     وظيفة إعادة التعيين اليومية الساعة 06:00 صباحاً بتوقيت القاهرة
-    إذا كان النظام في وضع SKIPPED_TODAY يتم إرجاعه تلقائياً إلى ACTIVE
+    تضمن إعادة تفعيل الحالة إلى ACTIVE دائماً لليوم الجديد حتى لو تم الضغط بالخطأ على إيقاف مؤقت
     """
-    was_reset = state_manager.check_and_reset_daily()
-    if was_reset:
+    current_status = state_manager.get_status()
+    if current_status != "ACTIVE":
+        state_manager.resume()
         logger.info("Daily reset executed at 06:00 AM: Status reverted to ACTIVE.")
         if ENABLE_TELEGRAM:
             await notifier.send_telegram(
-                "🌅 *صباح الخير والنشاط!*\nتمت إعادة تفعيل التنبيهات تلقائياً لليوم الجديد (`ACTIVE`). استعد ليوم صحي قوي! 💪",
+                "🌅 <b>صباح الخير والنشاط!</b>\nتمت إعادة تفعيل التنبيهات تلقائياً لليوم الجديد (<code>ACTIVE</code>). استعد ليوم صحي قوي! 💪",
                 include_controls=True
             )
+
+# =====================================================================
+# Watchdog Engine: فاحص تلقائي كل دقيقة لتعويض أي تنبيه فات السيرفر
+# =====================================================================
+async def watchdog_task_loop():
+    """
+    حلقة مراقبة ذكية تعمل كل 60 ثانية:
+    إذا حدث وتأخر السيرفر أو استيقظ من السكون بعد دقيقة أو دقائق من موعد التنبيه،
+    يقوم الفاحص فوراً بالتقاط الحدث وإرساله فوراً لمنع تفويت أي تنبيه!
+    """
+    logger.info("Watchdog engine started.")
+    while True:
+        try:
+            cairo_now = datetime.now(CAIRO_TZ)
+            today_str = cairo_now.strftime("%Y-%m-%d")
+            curr_mins = cairo_now.hour * 60 + cairo_now.minute
+
+            daily_alerts = [
+                ("job_morning_alarm", 7 * 60 + 45, job_morning_alarm),
+                ("job_breakfast", 7 * 60 + 45, job_breakfast),
+                ("job_work_snack", 12 * 60 + 15, job_work_snack),
+                ("job_lunch", 15 * 60 + 30, job_lunch),
+                ("job_workout", 18 * 60 + 5, job_workout),
+                ("job_shake", 19 * 60 + 0, job_shake),
+                ("job_dinner", 21 * 60 + 15, job_dinner),
+                ("job_bedtime_prep", 22 * 60 + 30, job_bedtime_prep)
+            ]
+
+            for alert_id, alert_mins, alert_func in daily_alerts:
+                # إذا وصلنا لموعد التنبيه أو مر عليه أقل من 20 دقيقة ولم يُرسل بعد اليوم:
+                if alert_mins <= curr_mins <= (alert_mins + 20):
+                    if not state_manager.is_alert_sent_today(alert_id, today_str):
+                        logger.info(f"Watchdog: Catching missed alert {alert_id} for {today_str} (time: {curr_mins} vs {alert_mins})")
+                        await alert_func()
+
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Watchdog loop error: {e}")
+            
+        await asyncio.sleep(60)
 
 # =====================================================================
 # Scheduler Registration
 # =====================================================================
 def register_scheduled_jobs():
-    """تسجيل جميع المواعيد اليومية حسب حسابات المهلة بتوقيت القاهرة"""
-    # 0. منبه الاستيقاظ والروتين: 07:45 ص (8 إلا ربع)
-    scheduler.add_job(job_morning_alarm, CronTrigger(hour=7, minute=45, timezone=CAIRO_TZ), id="job_morning_alarm", replace_existing=True)
+    """
+    تسجيل جميع المواعيد اليومية حسب حسابات المهلة بتوقيت القاهرة
+    تم تفعيل misfire_grace_time=3600 و coalesce=True لضمان عدم إسقاط أي إشعار مطلقاً
+    حتى في حالة حدوث تأخير في السيرفر أو استيقاظ من وضع السكون.
+    """
+    job_defaults = {
+        "misfire_grace_time": 3600,  # سماحية ساعة كاملة لضمان تنفيذ الإشعار وعدم إسقاطه
+        "coalesce": True,             # دمج أي تكرارات في حال حدث تأخير
+        "replace_existing": True
+    }
 
-    # 1. الفطار: 07:45 ص (موعد الأكل 08:00 ص)
-    scheduler.add_job(job_breakfast, CronTrigger(hour=7, minute=45, timezone=CAIRO_TZ), id="job_breakfast", replace_existing=True)
+    # 0. منبه الاستيقاظ والروتين: 07:45 ص (8 إلا ربع)
+    scheduler.add_job(
+        job_morning_alarm,
+        CronTrigger(hour=7, minute=45, timezone=CAIRO_TZ),
+        id="job_morning_alarm",
+        **job_defaults
+    )
+
+    # 1. الفطار: 07:45 ص (موعد الأكل 08:00 ص - مهلة 15 دقيقة)
+    scheduler.add_job(
+        job_breakfast,
+        CronTrigger(hour=7, minute=45, timezone=CAIRO_TZ),
+        id="job_breakfast",
+        **job_defaults
+    )
     
-    # 2. سناك الشغل: 12:15 ظ (موعد السناك 12:30 ظ)
-    scheduler.add_job(job_work_snack, CronTrigger(hour=12, minute=15, timezone=CAIRO_TZ), id="job_work_snack", replace_existing=True)
+    # 2. سناك الشغل: 12:15 ظ (موعد السناك 12:30 ظ - مهلة 15 دقيقة)
+    scheduler.add_job(
+        job_work_snack,
+        CronTrigger(hour=12, minute=15, timezone=CAIRO_TZ),
+        id="job_work_snack",
+        **job_defaults
+    )
     
     # 3. الغداء الخارجي: 03:30 م (موعد الغداء 04:30 م - مهلة 60 دقيقة)
-    scheduler.add_job(job_lunch, CronTrigger(hour=15, minute=30, timezone=CAIRO_TZ), id="job_lunch", replace_existing=True)
+    scheduler.add_job(
+        job_lunch,
+        CronTrigger(hour=15, minute=30, timezone=CAIRO_TZ),
+        id="job_lunch",
+        **job_defaults
+    )
     
     # 4. تمرين المنزل: 06:05 م (موعد التمرين 06:15 م - مهلة 10 دقائق)
-    scheduler.add_job(job_workout, CronTrigger(hour=18, minute=5, timezone=CAIRO_TZ), id="job_workout", replace_existing=True)
+    scheduler.add_job(
+        job_workout,
+        CronTrigger(hour=18, minute=5, timezone=CAIRO_TZ),
+        id="job_workout",
+        **job_defaults
+    )
     
-    # 5. شيك الضخامة: 07:00 م (موعد الشيك 07:15 م)
-    scheduler.add_job(job_shake, CronTrigger(hour=19, minute=0, timezone=CAIRO_TZ), id="job_shake", replace_existing=True)
+    # 5. شيك الضخامة: 07:00 م (موعد الشيك 07:15 م - مهلة 15 دقيقة)
+    scheduler.add_job(
+        job_shake,
+        CronTrigger(hour=19, minute=0, timezone=CAIRO_TZ),
+        id="job_shake",
+        **job_defaults
+    )
     
-    # 6. العشاء ومكمل الحديد: 09:15 م (موعد العشاء 09:30 م)
-    scheduler.add_job(job_dinner, CronTrigger(hour=21, minute=15, timezone=CAIRO_TZ), id="job_dinner", replace_existing=True)
+    # 6. العشاء ومكمل الحديد: 09:15 م (موعد العشاء 09:30 م - مهلة 15 دقيقة)
+    scheduler.add_job(
+        job_dinner,
+        CronTrigger(hour=21, minute=15, timezone=CAIRO_TZ),
+        id="job_dinner",
+        **job_defaults
+    )
     
     # 7. الاستعداد للنوم وترك الهاتف: 10:30 م (قبل النوم بنصف ساعة)
-    scheduler.add_job(job_bedtime_prep, CronTrigger(hour=22, minute=30, timezone=CAIRO_TZ), id="job_bedtime_prep", replace_existing=True)
+    scheduler.add_job(
+        job_bedtime_prep,
+        CronTrigger(hour=22, minute=30, timezone=CAIRO_TZ),
+        id="job_bedtime_prep",
+        **job_defaults
+    )
 
-    # 8. إعادة التعيين اليومي لإجازة اليوم: 06:00 ص
-    scheduler.add_job(job_daily_reset, CronTrigger(hour=6, minute=0, timezone=CAIRO_TZ), id="job_daily_reset", replace_existing=True)
+    # 8. إعادة التعيين اليومي لإجازة اليوم وضمان حالة ACTIVE: 06:00 ص
+    scheduler.add_job(
+        job_daily_reset,
+        CronTrigger(hour=6, minute=0, timezone=CAIRO_TZ),
+        id="job_daily_reset",
+        **job_defaults
+    )
     
-    logger.info("All 9 recurring jobs successfully registered with APScheduler (Cairo Timezone).")
+    logger.info("All 9 recurring jobs successfully registered with APScheduler (Cairo Timezone) with 1-hour misfire protection.")
 
 # =====================================================================
 # Lifespan Context Manager (Startup & Shutdown)
@@ -225,9 +368,15 @@ async def lifespan(app: FastAPI):
         bot_task = asyncio.create_task(bot_handler.start_polling())
         logger.info("Telegram background polling task launched.")
 
+    # 3. تشغيل الفاحص التلقائي (Watchdog) كل 60 ثانية لضمان عدم تفويت أي إشعار
+    watchdog_task = asyncio.create_task(watchdog_task_loop())
+    logger.info("Watchdog background task launched.")
+
     yield
 
     # Cleanup عند إيقاف الخادم
+    if watchdog_task:
+        watchdog_task.cancel()
     if bot_task:
         bot_handler.stop_polling()
         bot_task.cancel()
@@ -244,6 +393,33 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan
 )
+
+# Keep-Alive & Health Ping Endpoints (لضمان بقاء السيرفر مستيقظاً 24/7 على Render)
+@app.get("/ping")
+@app.get("/healthz")
+async def health_check():
+    cairo_now = datetime.now(CAIRO_TZ)
+    return {
+        "status": "healthy",
+        "cairo_time": cairo_now.strftime("%Y-%m-%d %I:%M:%S %p"),
+        "system_status": state_manager.get_status()
+    }
+
+# Webhook Endpoint (دعم كامل للـ Webhook بالتوازي مع الـ Polling)
+@app.post("/api/telegram/webhook")
+async def telegram_webhook(request: Request):
+    """
+    مسار Webhook فوري: يستقبل ضغطات الأزرار والرسائل من تيليجرام مباشرة
+    ويرد عليها في جزء من الثانية دون أي تأخير
+    """
+    try:
+        update_data = await request.json()
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            await bot_handler.handle_update(client, update_data)
+        return {"ok": True}
+    except Exception as e:
+        logger.error(f"Error in telegram webhook: {e}")
+        return {"ok": False, "error": str(e)}
 
 # Helper: Compute Next Upcoming Alert
 def get_next_alert_info(today_schedule):

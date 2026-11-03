@@ -403,22 +403,24 @@ def get_day_schedule(weekday: int, custom_texts: Optional[Dict[str, str]] = None
 
 def format_day_summary_text(weekday: int, custom_texts: Optional[Dict[str, str]] = None) -> str:
     """
-    تنسيق جدول اليوم بالكامل كرسالة واضحة وأنيقة للتيليجرام والواتساب
+    تنسيق جدول اليوم بالكامل كرسالة واضحة وأنيقة للتيليجرام والواتساب بتنسيق HTML الآمن
     """
     day_name = WEEKDAYS_AR.get(weekday, "اليوم")
     events = get_day_schedule(weekday, custom_texts)
 
-    header = f"📅 *جدول اليوم ({day_name}) - مواعيد الوجبات والتمارين*\n"
-    header += f"⏰ *المنطقة الزمنية: توقيت القاهرة (UTC+2)*\n"
+    header = f"📅 <b>جدول اليوم ({day_name}) - مواعيد الوجبات والتمارين</b>\n"
+    header += f"⏰ <b>المنطقة الزمنية: توقيت القاهرة (UTC+2)</b>\n"
     header += "━━━━━━━━━━━━━━━━━━━━\n\n"
 
     body_parts = []
     for ev in events:
+        # تنظيف علامات الماركداون واستبدالها بنصوص واضحة
+        clean_ev_text = ev['text'].replace('*', '')
         body_parts.append(
-            f"{ev['badge_emoji']} *{ev['title']}*\n"
-            f"⏱️ موعد الحدث: `{ev['event_time']}` | 🔔 وقت التنبيه: `{ev['alert_time']}` (قبلها بـ {ev['lead_time']} دقيقة)\n"
-            f"{ev['text']}\n"
+            f"{ev['badge_emoji']} <b>{ev['title']}</b>\n"
+            f"⏱️ موعد الحدث: <code>{ev['event_time']}</code> | 🔔 وقت التنبيه: <code>{ev['alert_time']}</code> (قبلها بـ {ev['lead_time']} دقيقة)\n"
+            f"{clean_ev_text}\n"
         )
 
-    footer = "━━━━━━━━━━━━━━━━━━━━\n💪 *التزم بجدولك وحقق هدفك اليوم!*"
+    footer = "━━━━━━━━━━━━━━━━━━━━\n💪 <b>التزم بجدولك وحقق هدفك اليوم!</b>"
     return header + "\n".join(body_parts) + footer

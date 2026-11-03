@@ -77,11 +77,11 @@ class NotificationDispatcher:
                 "inline_keyboard": self.get_inline_keyboard(current_status)
             }
 
-        # المحاولة 1: تنسيق Markdown
+        # تجهيز الرسالة بتنسيق HTML الآمن
         payload: Dict[str, Any] = {
             "chat_id": target_chat_id,
             "text": text,
-            "parse_mode": "Markdown",
+            "parse_mode": "HTML",
             "disable_web_page_preview": True
         }
         if reply_markup:
@@ -94,18 +94,12 @@ class NotificationDispatcher:
                     logger.info("Telegram notification sent successfully to chat %s", target_chat_id)
                     return True
                 else:
-                    logger.warning("Markdown parse failed (%s: %s). Falling back to plain text...", res.status_code, res.text)
+                    logger.warning("HTML parse failed (%s: %s). Falling back to plain text...", res.status_code, res.text)
                     # المحاولة 2: إرسال كنص عادي لتفادي أي خطأ في رموز التنسيق
                     payload.pop("parse_mode", None)
-                    # تنظيف علامات الماركداون يدوياً
-                    payload["text"] = text.replace("*", "").replace("`", "")
+                    payload["text"] = text.replace("<b>", "").replace("</b>", "").replace("<code>", "").replace("</code>", "").replace("*", "")
                     res2 = await client.post(url, json=payload)
-                    if res2.status_code == 200:
-                        logger.info("Telegram fallback plain text sent successfully.")
-                        return True
-                    else:
-                        logger.error("Failed to send Telegram message: %s - %s", res2.status_code, res2.text)
-                        return False
+                    return res2.status_code == 200
         except Exception as e:
             logger.error("Exception sending Telegram message: %s", e)
             return False

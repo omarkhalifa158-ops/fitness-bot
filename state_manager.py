@@ -26,6 +26,7 @@ class StateManager:
             "telegram_chat_id": TELEGRAM_CHAT_ID or None,
             "last_notification_sent": None,
             "notification_history": [],
+            "daily_sent_alerts": {},         # {"YYYY-MM-DD": ["job_id1", "job_id2"]}
             "updated_at": datetime.now(CAIRO_TZ).isoformat()
         }
 
@@ -82,36 +83,48 @@ class StateManager:
 
     def check_and_reset_daily(self) -> bool:
         """
-        التحقق اليومي: إذا كان النظام في وضع SKIPPED_TODAY،
-        يتم إرجاعه تلقائياً إلى وضع ACTIVE بعد الساعة 06:00 صباحاً من اليوم التالي
+        التحقق اليومي: إعادة النظام تلقائياً إلى ACTIVE عند الساعة 06:00 صباحاً
+        لضمان عدم بقاء النظام في وضع إجازة أو إيقاف بالخطأ
         """
-        if self.state.get("status") != "SKIPPED_TODAY":
+        current_status = self.state.get("status", "ACTIVE")
+        if current_status == "ACTIVE":
             return False
-
-        skip_date_str = self.state.get("skip_date")
-        if not skip_date_str:
-            self.state["status"] = "ACTIVE"
-            self._save_state()
-            return True
 
         cairo_now = datetime.now(CAIRO_TZ)
         today_str = cairo_now.strftime("%Y-%m-%d")
 
-        try:
-            skip_date = datetime.strptime(skip_date_str, "%Y-%m-%d").date()
-            today_date = cairo_now.date()
-
-            # إذا مر اليوم وأصبحنا في يوم لاحق وتجاوزت الساعة 06:00 صباحاً (أو مر أكثر من يوم كامل)
-            if today_date > skip_date:
-                if cairo_now.hour >= 6 or (today_date - skip_date).days > 1:
+        # إذا كانت الحالة إجازة اليوم
+        if current_status == "SKIPPED_TODAY":
+            skip_date_str = self.state.get("skip_date")
+            if not skip_date_str:
+                self.state["status"] = "ACTIVE"
+                self._save_state()
+                return True
+            try:
+                skip_date = datetime.strptime(skip_date_str, "%Y-%m-%d").date()
+                today_date = cairo_now.date()
+                if today_date > skip_date and cairo_now.hour >= 6:
                     self.state["status"] = "ACTIVE"
                     self.state["skip_date"] = None
                     self._save_state()
                     return True
-        except Exception:
-            self.state["status"] = "ACTIVE"
-            self._save_state()
-            return True
+            except Exception:
+                self.state["status"] = "ACTIVE"
+                self._save_state()
+                return True
+
+        # إذا كانت الحالة إيقاف مؤقت، يتم فحص ما إذا كان تحديث الأمس قد مضى عليه يوم كامل بعد 06:00 ص
+        elif current_status == "PAUSED":
+            updated_str = self.state.get("updated_at")
+            if updated_str:
+                try:
+                    updated_dt = datetime.fromisoformat(updated_str)
+                    if cairo_now.date() > updated_dt.date() and cairo_now.hour >= 6:
+                        self.state["status"] = "ACTIVE"
+                        self._save_state()
+                        return True
+                except Exception:
+                    pass
 
         return False
 
@@ -122,6 +135,28 @@ class StateManager:
 
     def get_telegram_chat_id(self) -> Optional[str]:
         return self.state.get("telegram_chat_id") or TELEGRAM_CHAT_ID
+
+    def is_alert_sent_today(self, alert_id: str, date_str: str) -> bool:
+        """فحص ما إذا كان التنبيه قد تم إرساله بالفعل اليوم لتجنب التكرار"""
+        daily = self.state.get("daily_sent_alerts", {})
+        today_list = daily.get(date_str, [])
+        return alert_id in today_list
+
+    def mark_alert_sent_today(self, alert_id: str, date_str: str):
+        """تسجيل التنبيه كمرسل لليوم الحالي"""
+        if "daily_sent_alerts" not in self.state:
+            self.state["daily_sent_alerts"] = {}
+        daily = self.state["daily_sent_alerts"]
+        
+        # تنظيف الأيام القديمة (الاحتفاظ بآخر يومين فقط)
+        keys_to_keep = [k for k in daily.keys() if k >= date_str or k == date_str]
+        self.state["daily_sent_alerts"] = {k: daily[k] for k in keys_to_keep}
+        
+        if date_str not in self.state["daily_sent_alerts"]:
+            self.state["daily_sent_alerts"][date_str] = []
+        if alert_id not in self.state["daily_sent_alerts"][date_str]:
+            self.state["daily_sent_alerts"][date_str].append(alert_id)
+        self._save_state()
 
     def record_notification(self, title: str, category: str, alert_time: str, channels: Dict[str, bool]):
         """تسجيل الإشعار في سجل التنبيهات للمتابعة في الـ Dashboard"""

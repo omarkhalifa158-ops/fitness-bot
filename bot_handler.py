@@ -24,12 +24,23 @@ class TelegramBotHandler:
         self.offset = 0
         self.is_running = False
 
-    async def answer_callback_query(self, client: httpx.AsyncClient, callback_query_id: str, text: str):
-        """الرد على ضغطة الزر التفاعلي لإيقاف مؤشر التحميل في شاشة المستخدم"""
+    async def answer_callback_query(
+        self,
+        client: httpx.AsyncClient,
+        callback_query_id: str,
+        text: str,
+        show_alert: bool = False
+    ):
+        """الرد الفوري على ضغطة الزر التفاعلي لإيقاف مؤشر التحميل وإظهار التنبيه"""
         try:
             await client.post(
                 f"{self.base_url}/answerCallbackQuery",
-                json={"callback_query_id": callback_query_id, "text": text, "show_alert": False}
+                json={
+                    "callback_query_id": callback_query_id,
+                    "text": text,
+                    "show_alert": show_alert
+                },
+                timeout=5.0
             )
         except Exception as e:
             logger.debug("Error answering callback: %s", e)
@@ -41,22 +52,23 @@ class TelegramBotHandler:
         text: str,
         reply_markup: Optional[Dict[str, Any]] = None
     ):
-        """إرسال رسالة رد سريعة للمستخدم مع حماية التنسيق"""
+        """إرسال رسالة رد سريعة للمستخدم باستخدام HTML الآمن"""
         payload = {
             "chat_id": chat_id,
             "text": text,
-            "parse_mode": "Markdown",
+            "parse_mode": "HTML",
             "disable_web_page_preview": True
         }
         if reply_markup:
             payload["reply_markup"] = reply_markup
 
         try:
-            res = await client.post(f"{self.base_url}/sendMessage", json=payload)
+            res = await client.post(f"{self.base_url}/sendMessage", json=payload, timeout=10.0)
             if res.status_code != 200:
+                logger.warning("HTML send failed: %s - %s. Retrying without HTML...", res.status_code, res.text)
                 payload.pop("parse_mode", None)
-                payload["text"] = text.replace("*", "").replace("`", "")
-                await client.post(f"{self.base_url}/sendMessage", json=payload)
+                payload["text"] = text.replace("<b>", "").replace("</b>", "").replace("<code>", "").replace("</code>", "")
+                await client.post(f"{self.base_url}/sendMessage", json=payload, timeout=10.0)
         except Exception as e:
             logger.error("Error sending response message: %s", e)
 
@@ -154,30 +166,31 @@ class TelegramBotHandler:
 
             if data == "cmd_start":
                 state_manager.resume()
-                await self.answer_callback_query(client, cq_id, "تم تفعيل التنبيهات ✅")
+                await self.answer_callback_query(client, cq_id, "تم تفعيل التنبيهات بنجاح ✅", show_alert=True)
                 status = state_manager.get_status()
-                msg = "▶️ *تم تشغيل التنبيهات بنجاح (`ACTIVE`).*"
+                msg = "▶️ <b>تم تشغيل التنبيهات بنجاح (<code>ACTIVE</code>).</b>\nسيرسل لك النظام التنبيهات في مواعيدها المحسوبة تلقائياً."
                 await self.send_message(client, chat_id, msg, self.get_control_keyboard(status))
 
             elif data == "cmd_stop":
                 state_manager.pause()
-                await self.answer_callback_query(client, cq_id, "تم إيقاف التنبيهات ⏸️")
+                await self.answer_callback_query(client, cq_id, "تم إيقاف التنبيهات مؤقتاً ⏸️", show_alert=True)
                 status = state_manager.get_status()
-                msg = "⏸️ *تم إيقاف التنبيهات مؤقتاً (`PAUSED`).*"
+                msg = "⏸️ <b>تم إيقاف التنبيهات مؤقتاً (<code>PAUSED</code>).</b>\nلن يتم إرسال تنبيهات حتى تضغط تشغيل مجدداً."
                 await self.send_message(client, chat_id, msg, self.get_control_keyboard(status))
 
             elif data == "cmd_skip_today":
                 state_manager.skip_today()
-                await self.answer_callback_query(client, cq_id, "تم أخذ إجازة اليوم 🏖️")
+                await self.answer_callback_query(client, cq_id, "تم أخذ إجازة اليوم 🏖️", show_alert=True)
                 status = state_manager.get_status()
                 msg = (
-                    "🏖️ *تم تفعيل إجازة اليوم (`SKIPPED_TODAY`).*\n"
-                    "🔄 ستستأنف التنبيهات تلقائياً غداً الساعة 06:00 صباحاً."
+                    "🏖️ <b>تم تفعيل إجازة اليوم (<code>SKIPPED_TODAY</code>).</b>\n\n"
+                    "• تم تعليق باقي تنبيهات اليوم.\n"
+                    "🔄 سيعود النظام للعمل تلقائياً غداً في تمام الساعة <b>06:00 صباحاً</b> بتوقيت القاهرة."
                 )
                 await self.send_message(client, chat_id, msg, self.get_control_keyboard(status))
 
             elif data == "cmd_today":
-                await self.answer_callback_query(client, cq_id, "جاري جلب جدول اليوم...")
+                await self.answer_callback_query(client, cq_id, "جاري إرسال جدول اليوم... 📅")
                 cairo_now = datetime.now(CAIRO_TZ)
                 weekday = cairo_now.weekday()
                 custom_texts = state_manager.get_custom_meals()
@@ -188,11 +201,22 @@ class TelegramBotHandler:
             elif data == "cmd_ping":
                 cairo_now = datetime.now(CAIRO_TZ).strftime("%I:%M:%S %p")
                 status = state_manager.get_status()
+                # 1. إظهار نافذة منبثقة واضحة بالـ Pop-up
                 await self.answer_callback_query(
                     client,
                     cq_id,
-                    f"النظام يعمل بنجاح! الحالة: {status} | توقيت القاهرة: {cairo_now}"
+                    f"✅ فحص فوري: النظام متصل ويعمل بكفاءة!\nالحالة: {status}\nتوقيت القاهرة: {cairo_now}",
+                    show_alert=True
                 )
+                # 2. إرسال رسالة تأكيد في الشات مباشرة
+                ping_msg = (
+                    f"⚡ <b>فحص فوري ناجح للنظام!</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"• 🟢 <b>حالة النظام:</b> <code>{status}</code>\n"
+                    f"• 🕒 <b>الوقت الحالي في القاهرة:</b> <code>{cairo_now}</code>\n"
+                    f"• 🔔 <b>مجدول المواعيد:</b> يعمل بكفاءة مع حماية الـ Watchdog."
+                )
+                await self.send_message(client, chat_id, ping_msg, self.get_control_keyboard(status))
 
     async def start_polling(self):
         """حلقة الاستماع المستمر لتحديثات البوت (Long Polling)"""
